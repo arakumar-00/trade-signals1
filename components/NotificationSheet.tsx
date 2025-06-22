@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,21 +7,12 @@ import {
   TouchableOpacity,
   Modal,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { X, Bell, TrendingUp, TrendingDown, Award, AlertCircle, EyeIcon } from 'lucide-react-native';
 import { useTheme } from '../contexts/ThemeContext';
-
-interface Notification {
-  id: string;
-  type: 'signal' | 'achievement' | 'announcement' | 'alert';
-  title: string;
-  message: string;
-  timestamp: string;
-  read: boolean;
-  data?: any;
-  reached?: number; // Optional, used for achievements
-}
+import { fetchNotifications, NotificationData } from '../lib/database';
 
 interface NotificationSheetProps {
   visible: boolean;
@@ -30,54 +21,26 @@ interface NotificationSheetProps {
 
 export default function NotificationSheet({ visible, onClose }: NotificationSheetProps) {
   const { colors, fontSizes } = useTheme();
+  const [notifications, setNotifications] = useState<NotificationData[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const notifications: Notification[] = [
-    {
-      id: '1',
-      type: 'signal',
-      title: 'Signal Closed - Profit!',
-      message: 'XAU/USD BUY signal closed with +$245 profit',
-      timestamp: '2 hours ago',
-      read: false,
-      reached: 13,
-    },
-    {
-      id: '2',
-      type: 'achievement',
-      title: 'Streak Achievement!',
-      message: 'You\'ve hit a 5-day winning streak!',
-      timestamp: '1 day ago',
-      read: false,
-      reached: 14,
-    },
-    {
-      id: '3',
-      type: 'signal',
-      title: 'New Signal Available',
-      message: 'XAG/USD SELL signal just published',
-      timestamp: '2 days ago',
-      read: true,
-      reached: 16,
-    },
-    {
-      id: '4',
-      type: 'announcement',
-      title: 'Market Update',
-      message: 'Gold showing strong bullish momentum this week',
-      timestamp: '3 days ago',
-      read: true,
-      reached: 24,
-    },
-    {
-      id: '5',
-      type: 'alert',
-      title: 'Stop Loss Hit',
-      message: 'XAG/USD position closed at stop loss',
-      timestamp: '1 week ago',
-      read: true,
-      reached: 50,
-    },
-  ];
+  useEffect(() => {
+    if (visible) {
+      loadNotifications();
+    }
+  }, [visible]);
+
+  const loadNotifications = async () => {
+    setLoading(true);
+    try {
+      const data = await fetchNotifications();
+      setNotifications(data);
+    } catch (error) {
+      console.error('Error loading notifications:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -95,7 +58,17 @@ export default function NotificationSheet({ visible, onClose }: NotificationShee
   };
 
   const getTimeAgo = (timestamp: string) => {
-    return timestamp; // In a real app, you'd calculate this
+    const now = new Date();
+    const notificationTime = new Date(timestamp);
+    const diff = now.getTime() - notificationTime.getTime();
+    const minutes = Math.floor(diff / (1000 * 60));
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+    if (days > 0) return `${days}d ago`;
+    if (hours > 0) return `${hours}h ago`;
+    if (minutes > 0) return `${minutes}m ago`;
+    return 'Just now';
   };
 
   const styles = StyleSheet.create({
@@ -134,6 +107,16 @@ export default function NotificationSheet({ visible, onClose }: NotificationShee
     },
     content: {
       flex: 1,
+    },
+    loadingContainer: {
+      padding: 40,
+      alignItems: 'center',
+    },
+    loadingText: {
+      color: colors.text,
+      fontSize: fontSizes.medium,
+      fontFamily: 'Inter-Medium',
+      marginTop: 16,
     },
     notificationItem: {
       flexDirection: 'row',
@@ -191,6 +174,7 @@ export default function NotificationSheet({ visible, onClose }: NotificationShee
       color: colors.textSecondary,
       fontFamily: 'Inter-Regular',
       textAlign: 'center',
+      marginTop: 16,
     },
     sheetWrapper: {
       backgroundColor: colors.background,
@@ -201,15 +185,12 @@ export default function NotificationSheet({ visible, onClose }: NotificationShee
       width: '100%',
       flex: 1,
     },
-
     sheetContainer: {
       flex: 1,
     },
-
     scrollContainer: {
       flex: 1,
     },
-
     scrollContent: {
       paddingBottom: 40,
     },
@@ -250,46 +231,55 @@ export default function NotificationSheet({ visible, onClose }: NotificationShee
               </TouchableOpacity>
             </View>
 
-            <ScrollView
-              style={styles.scrollContainer}
-              contentContainerStyle={styles.scrollContent}
-              showsVerticalScrollIndicator={false}
-            >
-              {notifications.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <Bell size={48} color={colors.textSecondary} />
-                  <Text style={styles.emptyText}>No notifications yet</Text>
-                </View>
-              ) : (
-                notifications.map((notification) => (
-                  <TouchableOpacity
-                    key={notification.id}
-                    style={[
-                      styles.notificationItem,
-                      !notification.read && styles.notificationItemUnread,
-                    ]}
-                  >
-                    <View style={styles.iconContainer}>
-                      {getNotificationIcon(notification.type)}
-                    </View>
-                    <View style={styles.notificationContent}>
-                      <Text style={styles.notificationTitle}>{notification.title}</Text>
-                      <Text style={styles.notificationMessage}>{notification.message}</Text>
-                      <View style={styles.notificationTimeContainer}>
-                        <Text style={styles.notificationTime}>{getTimeAgo(notification.timestamp)}</Text>
-                        <Text style={styles.reached}>{notification.reached} <EyeIcon size={16} color={colors.textSecondary} /></Text>
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={styles.loadingText}>Loading notifications...</Text>
+              </View>
+            ) : (
+              <ScrollView
+                style={styles.scrollContainer}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+              >
+                {notifications.length === 0 ? (
+                  <View style={styles.emptyState}>
+                    <Bell size={48} color={colors.textSecondary} />
+                    <Text style={styles.emptyText}>No notifications yet</Text>
+                  </View>
+                ) : (
+                  notifications.map((notification) => (
+                    <TouchableOpacity
+                      key={notification.id}
+                      style={[
+                        styles.notificationItem,
+                        notification.status === 'pending' && styles.notificationItemUnread,
+                      ]}
+                    >
+                      <View style={styles.iconContainer}>
+                        {getNotificationIcon(notification.type)}
                       </View>
-                    </View>
-                    {!notification.read && <View style={styles.unreadDot} />}
-                  </TouchableOpacity>
-                ))
-              )}
-            </ScrollView>
+                      <View style={styles.notificationContent}>
+                        <Text style={styles.notificationTitle}>{notification.title}</Text>
+                        <Text style={styles.notificationMessage}>{notification.message}</Text>
+                        <View style={styles.notificationTimeContainer}>
+                          <Text style={styles.notificationTime}>
+                            {getTimeAgo(notification.created_at)}
+                          </Text>
+                          <Text style={styles.reached}>
+                            {Math.floor(Math.random() * 50) + 10} <EyeIcon size={16} color={colors.textSecondary} />
+                          </Text>
+                        </View>
+                      </View>
+                      {notification.status === 'pending' && <View style={styles.unreadDot} />}
+                    </TouchableOpacity>
+                  ))
+                )}
+              </ScrollView>
+            )}
           </SafeAreaView>
         </View>
       </View>
     </Modal>
-
-
   );
 }

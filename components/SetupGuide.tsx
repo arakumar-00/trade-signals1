@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,12 @@ import {
   Modal,
   ScrollView,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { X, Database, ExternalLink, Copy, CircleCheck as CheckCircle, ArrowRight, Settings } from 'lucide-react-native';
+import { X, Database, ExternalLink, Copy, CircleCheck as CheckCircle } from 'lucide-react-native';
 import { useTheme } from '../contexts/ThemeContext';
+import { fetchSetupSteps, SetupStep } from '../lib/database';
 
 interface SetupGuideProps {
   visible: boolean;
@@ -20,6 +22,26 @@ interface SetupGuideProps {
 export default function SetupGuide({ visible, onClose }: SetupGuideProps) {
   const { colors, fontSizes } = useTheme();
   const [copiedStep, setCopiedStep] = useState<number | null>(null);
+  const [setupSteps, setSetupSteps] = useState<SetupStep[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (visible) {
+      loadSetupSteps();
+    }
+  }, [visible]);
+
+  const loadSetupSteps = async () => {
+    setLoading(true);
+    try {
+      const steps = await fetchSetupSteps();
+      setSetupSteps(steps);
+    } catch (error) {
+      console.error('Error loading setup steps:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const copyToClipboard = (text: string, stepIndex: number) => {
     // Note: Clipboard API might not work in web environment
@@ -27,40 +49,6 @@ export default function SetupGuide({ visible, onClose }: SetupGuideProps) {
     setCopiedStep(stepIndex);
     setTimeout(() => setCopiedStep(null), 2000);
   };
-
-  const setupSteps = [
-    {
-      title: "Create Supabase Project",
-      description: "Sign up at supabase.com and create a new project",
-      action: "Visit supabase.com",
-      code: null,
-    },
-    {
-      title: "Get Project Credentials",
-      description: "Navigate to Settings > API in your Supabase dashboard",
-      action: "Copy Project URL",
-      code: "https://your-project-id.supabase.co",
-    },
-    {
-      title: "Copy Anon Key",
-      description: "Copy the 'anon public' key from the API settings",
-      action: "Copy Anon Key",
-      code: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    },
-    {
-      title: "Create Environment File",
-      description: "Create a .env file in your project root with your credentials",
-      action: "Copy .env Template",
-      code: `EXPO_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-public-key-here`,
-    },
-    {
-      title: "Run Database Migrations",
-      description: "Execute the SQL migrations in your Supabase SQL editor",
-      action: "View Migration Files",
-      code: "supabase/migrations/*.sql",
-    },
-  ];
 
   const styles = StyleSheet.create({
     overlay: {
@@ -75,8 +63,8 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-public-key-here`,
       width: '90%',
       maxWidth: 500,
       maxHeight: '80%',
-      overflow: 'hidden',       // Ensures ScrollView renders properly
-      flex: 1,                  // Ensures content inside fills available space
+      overflow: 'hidden',
+      flex: 1,
     },
     header: {
       flexDirection: 'row',
@@ -121,6 +109,18 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-public-key-here`,
     },
     content: {
       flex: 1,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 40,
+    },
+    loadingText: {
+      color: colors.text,
+      fontSize: fontSizes.medium,
+      fontFamily: 'Inter-Medium',
+      marginTop: 16,
     },
     intro: {
       padding: 20,
@@ -225,13 +225,10 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-public-key-here`,
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        {/* Press outside to close */}
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
 
-        {/* Modal Content */}
         <View style={styles.container}>
           <SafeAreaView style={{ flex: 1 }}>
-            {/* Header */}
             <View style={styles.header}>
               <View style={styles.headerLeft}>
                 <View style={styles.iconContainer}>
@@ -247,60 +244,63 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-public-key-here`,
               </TouchableOpacity>
             </View>
 
-            {/* Scrollable Content */}
-            <ScrollView
-              contentContainerStyle={{ paddingBottom: 20 }}
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-            >
-              {/* Intro Section */}
-              <View style={styles.intro}>
-                <Text style={styles.introText}>
-                  Follow these steps to connect your app to Supabase and enable live trading signals.
-                  The app works perfectly in demo mode, but connecting to Supabase will give you real-time data.
-                </Text>
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={styles.loadingText}>Loading setup guide...</Text>
               </View>
+            ) : (
+              <ScrollView
+                contentContainerStyle={{ paddingBottom: 20 }}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                <View style={styles.intro}>
+                  <Text style={styles.introText}>
+                    Follow these steps to connect your app to Supabase and enable live trading signals.
+                    The app works perfectly in demo mode, but connecting to Supabase will give you real-time data.
+                  </Text>
+                </View>
 
-              {/* Steps */}
-              <View style={styles.stepsContainer}>
-                {setupSteps.map((step, index) => (
-                  <View key={index} style={styles.step}>
-                    <View style={styles.stepHeader}>
-                      <View style={styles.stepNumber}>
-                        <Text style={styles.stepNumberText}>{index + 1}</Text>
+                <View style={styles.stepsContainer}>
+                  {setupSteps.map((step, index) => (
+                    <View key={step.id} style={styles.step}>
+                      <View style={styles.stepHeader}>
+                        <View style={styles.stepNumber}>
+                          <Text style={styles.stepNumberText}>{step.step_order}</Text>
+                        </View>
+                        <Text style={styles.stepTitle}>{step.title}</Text>
                       </View>
-                      <Text style={styles.stepTitle}>{step.title}</Text>
-                    </View>
 
-                    <Text style={styles.stepDescription}>
-                      {step.description}
-                    </Text>
+                      <Text style={styles.stepDescription}>
+                        {step.description}
+                      </Text>
 
-                    <TouchableOpacity
-                      style={styles.actionButton}
-                      onPress={() => step.code && copyToClipboard(step.code, index)}
-                    >
-                      <Text style={styles.actionButtonText}>{step.action}</Text>
-                      {copiedStep === index ? (
-                        <CheckCircle size={16} color={colors.success} />
-                      ) : step.code ? (
-                        <Copy size={16} color={colors.textSecondary} />
-                      ) : (
-                        <ExternalLink size={16} color={colors.textSecondary} />
+                      <TouchableOpacity
+                        style={styles.actionButton}
+                        onPress={() => step.code_sample && copyToClipboard(step.code_sample, index)}
+                      >
+                        <Text style={styles.actionButtonText}>{step.action_text}</Text>
+                        {copiedStep === index ? (
+                          <CheckCircle size={16} color={colors.success} />
+                        ) : step.code_sample ? (
+                          <Copy size={16} color={colors.textSecondary} />
+                        ) : (
+                          <ExternalLink size={16} color={colors.textSecondary} />
+                        )}
+                      </TouchableOpacity>
+
+                      {step.code_sample && (
+                        <View style={styles.codeBlock}>
+                          <Text style={styles.codeText}>{step.code_sample}</Text>
+                        </View>
                       )}
-                    </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              </ScrollView>
+            )}
 
-                    {step.code && (
-                      <View style={styles.codeBlock}>
-                        <Text style={styles.codeText}>{step.code}</Text>
-                      </View>
-                    )}
-                  </View>
-                ))}
-              </View>
-            </ScrollView>
-
-            {/* Footer */}
             <View style={styles.footer}>
               <Text style={styles.footerText}>
                 Need help? The app works great in demo mode while you set up Supabase.
@@ -310,6 +310,5 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-public-key-here`,
         </View>
       </View>
     </Modal>
-
   );
 }

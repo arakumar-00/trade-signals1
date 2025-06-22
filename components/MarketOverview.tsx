@@ -1,30 +1,32 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { TrendingUp, TrendingDown } from 'lucide-react-native';
 import { useTheme } from '../contexts/ThemeContext';
-
-interface MarketData {
-  pair: string;
-  price: number;
-  change: number;
-  changePercent: number;
-}
+import { fetchMarketData, subscribeToMarketData, MarketData } from '../lib/database';
 
 export default function MarketOverview() {
   const { colors, fontSizes } = useTheme();
+  const [marketData, setMarketData] = useState<MarketData[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Updated to focus on Gold and Silver
-  const marketData: MarketData[] = [
-    { pair: 'XAU/USD', price: 2345.67, change: 12.34, changePercent: 0.53 },
-    { pair: 'XAG/USD', price: 29.45, change: -0.23, changePercent: -0.77 },
-    { pair: 'EUR/USD', price: 1.0867, change: 0.0023, changePercent: 0.21 },
-    { pair: 'GBP/USD', price: 1.2634, change: -0.0012, changePercent: -0.09 },
-    { pair: 'USD/JPY', price: 149.67, change: 0.45, changePercent: 0.30 },
-    { pair: 'AUD/USD', price: 0.6542, change: 0.0018, changePercent: 0.28 },
-  ];
+  useEffect(() => {
+    // Initial fetch
+    fetchMarketData().then((data) => {
+      setMarketData(data);
+      setLoading(false);
+    });
+
+    // Subscribe to real-time updates
+    const unsubscribe = subscribeToMarketData((data) => {
+      setMarketData(data);
+      setLoading(false);
+    });
+
+    return unsubscribe;
+  }, []);
 
   const renderMarketItem = (item: MarketData) => (
-    <View key={item.pair} style={styles.marketItem}>
+    <View key={item.id} style={styles.marketItem}>
       <Text style={styles.pairText}>{item.pair}</Text>
       <View style={styles.priceContainer}>
         <Text style={styles.priceText}>
@@ -42,7 +44,7 @@ export default function MarketOverview() {
             styles.changeText,
             item.change >= 0 ? styles.profitText : styles.lossText
           ]}>
-            {item.change >= 0 ? '+' : ''}{item.changePercent.toFixed(2)}%
+            {item.change >= 0 ? '+' : ''}{item.change_percent.toFixed(2)}%
           </Text>
         </View>
       </View>
@@ -103,7 +105,23 @@ export default function MarketOverview() {
     lossText: {
       color: colors.error,
     },
+    loadingContainer: {
+      paddingHorizontal: 20,
+      paddingVertical: 20,
+      alignItems: 'center',
+    },
   });
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.title}>Market Overview</Text>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color={colors.primary} />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

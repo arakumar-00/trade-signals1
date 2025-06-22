@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   ScrollView,
   Dimensions,
   TouchableOpacity,
-  Settings,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,45 +18,9 @@ import NotificationSheet from '@/components/NotificationSheet';
 import SetupGuide from '@/components/SetupGuide';
 import ConnectionStatus from '@/components/ConnectionStatus';
 import MarketOverview from '@/components/MarketOverview';
-
+import { fetchMarketData, fetchTechnicalIndicators, fetchEconomicEvents, MarketData, TechnicalIndicator, EconomicEvent } from '../../lib/database';
 
 const screenWidth = Dimensions.get('window').width;
-
-const technicalIndicators = [
-  { name: 'RSI', value: '61.2', status: 'Neutral', color: '#888' },
-  { name: 'MACD', value: '+2.3', status: 'Buy', color: '#00C897' },
-  { name: 'ADX', value: '25.6', status: 'Trend Strengthening', color: '#FFA500' },
-];
-
-const economicEvents = [
-  {
-    id: 1,
-    time: '10:30 AM',
-    impact: 'high',
-    currency: 'USD',
-    event: 'Non-Farm Payrolls',
-    forecast: '250K',
-    previous: '200K',
-  },
-  {
-    id: 2,
-    time: '12:00 PM',
-    impact: 'medium',
-    currency: 'EUR',
-    event: 'ECB Interest Rate Decision',
-    forecast: '1.25%',
-    previous: '1.00%',
-  },
-  {
-    id: 3,
-    time: '3:45 PM',
-    impact: 'low',
-    currency: 'JPY',
-    event: 'BoJ Press Conference',
-    forecast: '-',
-    previous: '-',
-  },
-];
 
 export default function HomeScreen() {
   const { colors, fontSizes } = useTheme();
@@ -65,28 +28,38 @@ export default function HomeScreen() {
   const [timeframe, setTimeframe] = useState('1H');
   const [setupGuideVisible, setSetupGuideVisible] = useState(false);
   const [notificationVisible, setNotificationVisible] = useState(false);
+  const [marketData, setMarketData] = useState<MarketData[]>([]);
+  const [technicalIndicators, setTechnicalIndicators] = useState<TechnicalIndicator[]>([]);
+  const [economicEvents, setEconomicEvents] = useState<EconomicEvent[]>([]);
 
+  useEffect(() => {
+    loadData();
+  }, [selectedAsset]);
 
-  const marketData = {
-    'XAU/USD': {
-      current: 2345.67,
-      change: 12.34,
-      changePercent: 0.53,
-      high: 2356.89,
-      low: 2334.12,
-      volume: '2.4M',
-    },
-    'XAG/USD': {
-      current: 29.45,
-      change: -0.23,
-      changePercent: -0.77,
-      high: 29.78,
-      low: 29.12,
-      volume: '1.8M',
-    },
+  const loadData = async () => {
+    try {
+      const [market, indicators, events] = await Promise.all([
+        fetchMarketData(),
+        fetchTechnicalIndicators(selectedAsset),
+        fetchEconomicEvents(),
+      ]);
+
+      setMarketData(market);
+      setTechnicalIndicators(indicators);
+      setEconomicEvents(events);
+    } catch (error) {
+      console.error('Error loading home screen data:', error);
+    }
   };
 
-  const currentData = marketData[selectedAsset];
+  const currentData = marketData.find(item => item.pair === selectedAsset) || {
+    price: selectedAsset === 'XAU/USD' ? 2345.67 : 29.45,
+    change: selectedAsset === 'XAU/USD' ? 12.34 : -0.23,
+    change_percent: selectedAsset === 'XAU/USD' ? 0.53 : -0.77,
+    high: selectedAsset === 'XAU/USD' ? 2356.89 : 29.78,
+    low: selectedAsset === 'XAU/USD' ? 2334.12 : 29.12,
+    volume: selectedAsset === 'XAU/USD' ? '2.4M' : '1.8M',
+  };
 
   const getTradingViewHTML = (symbol: string) => `
     <html>
@@ -100,41 +73,6 @@ export default function HomeScreen() {
     container: {
       flex: 1,
       backgroundColor: colors.background,
-    },
-    loadingContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    loadingText: {
-      color: colors.text,
-      fontSize: fontSizes.medium,
-      fontFamily: 'Inter-Medium',
-      marginTop: 16,
-    },
-    errorContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      paddingHorizontal: 20,
-    },
-    errorText: {
-      color: colors.error,
-      fontSize: fontSizes.medium,
-      fontFamily: 'Inter-Medium',
-      textAlign: 'center',
-      marginBottom: 16,
-    },
-    retryButton: {
-      backgroundColor: colors.primary,
-      paddingHorizontal: 20,
-      paddingVertical: 10,
-      borderRadius: 8,
-    },
-    retryButtonText: {
-      color: colors.background,
-      fontSize: fontSizes.medium,
-      fontFamily: 'Inter-SemiBold',
     },
     header: {
       flexDirection: 'row',
@@ -172,54 +110,6 @@ export default function HomeScreen() {
       borderWidth: 1,
       borderColor: colors.border,
     },
-    filtersContainer: {
-      flexDirection: 'row',
-      paddingHorizontal: 20,
-      marginBottom: 16,
-      gap: 12,
-    },
-    filterButton: {
-      paddingHorizontal: 20,
-      paddingVertical: 8,
-      borderRadius: 20,
-      backgroundColor: colors.surface,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    filterButtonActive: {
-      backgroundColor: colors.primary,
-      borderColor: colors.primary,
-    },
-    filterButtonText: {
-      color: colors.textSecondary,
-      fontSize: fontSizes.medium,
-      fontFamily: 'Inter-Medium',
-    },
-    filterButtonTextActive: {
-      color: colors.background,
-    },
-    signalsContainer: {
-      flex: 1,
-      paddingHorizontal: 20,
-    },
-    emptyContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      paddingVertical: 60,
-    },
-    emptyText: {
-      fontSize: fontSizes.subtitle,
-      color: colors.text,
-      fontFamily: 'Inter-SemiBold',
-      marginBottom: 8,
-    },
-    emptySubtext: {
-      fontSize: fontSizes.medium,
-      color: colors.textSecondary,
-      fontFamily: 'Inter-Regular',
-      textAlign: 'center',
-    },
   });
 
   return (
@@ -244,8 +134,10 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
       </View>
+      
       <ConnectionStatus />
       <MarketOverview />
+      
       <ScrollView showsVerticalScrollIndicator={false}>
         <AssetSwitcher selectedAsset={selectedAsset} onAssetChange={setSelectedAsset} />
 
@@ -267,11 +159,11 @@ export default function HomeScreen() {
                 <TrendingDown size={16} color={colors.error} />
               )}
               <Text style={{ color: currentData.change >= 0 ? colors.success : colors.error }}>
-                {currentData.change >= 0 ? '+' : ''}{currentData.changePercent.toFixed(2)}%
+                {currentData.change >= 0 ? '+' : ''}{currentData.change_percent.toFixed(2)}%
               </Text>
             </View>
           </View>
-          <Text style={{ fontSize: 32, fontWeight: 'bold', color: colors.text }}>{currentData.current.toFixed(2)}</Text>
+          <Text style={{ fontSize: 32, fontWeight: 'bold', color: colors.text }}>{currentData.price.toFixed(2)}</Text>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
             <View style={{ alignItems: 'center' }}>
               <Text style={{ fontSize: fontSizes.small, color: colors.textSecondary }}>High</Text>
@@ -292,7 +184,6 @@ export default function HomeScreen() {
           selectedTimeframe={timeframe}
           onTimeframeChange={setTimeframe}
         />
-
 
         {Platform.OS === 'web' ? (
           <View
@@ -333,14 +224,13 @@ export default function HomeScreen() {
           </View>
         )}
 
-
         <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
           <Text style={{ fontSize: fontSizes.subtitle, fontWeight: 'bold', color: colors.text, marginBottom: 16 }}>Technical Indicators</Text>
           <View style={{ gap: 12 }}>
             {technicalIndicators.map((indicator, index) => (
-              <View key={index} style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: colors.border }}>
+              <View key={indicator.id} style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: colors.border }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <Text style={{ fontSize: fontSizes.medium, color: colors.text }}>{indicator.name}</Text>
+                  <Text style={{ fontSize: fontSizes.medium, color: colors.text }}>{indicator.indicator_name}</Text>
                   <Text style={{ fontSize: fontSizes.medium, color: indicator.color }}>{indicator.value}</Text>
                 </View>
                 <Text style={{ fontSize: fontSizes.small, color: indicator.color }}>{indicator.status}</Text>
@@ -372,7 +262,7 @@ export default function HomeScreen() {
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                   <Text style={{ fontSize: fontSizes.small, color: colors.primary, backgroundColor: `${colors.primary}20`, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>{event.currency}</Text>
-                  <Text style={{ fontSize: fontSizes.medium, color: colors.text, flex: 1 }}>{event.event}</Text>
+                  <Text style={{ fontSize: fontSizes.medium, color: colors.text, flex: 1 }}>{event.event_name}</Text>
                 </View>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                   <Text style={{ fontSize: fontSizes.small, color: colors.textSecondary }}>Forecast: {event.forecast}</Text>
@@ -383,6 +273,7 @@ export default function HomeScreen() {
           </View>
         </View>
       </ScrollView>
+      
       <NotificationSheet
         visible={notificationVisible}
         onClose={() => setNotificationVisible(false)}
@@ -395,4 +286,3 @@ export default function HomeScreen() {
     </SafeAreaView>
   );
 }
-

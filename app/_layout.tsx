@@ -11,6 +11,7 @@ import {
 import * as SplashScreen from 'expo-splash-screen';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { ThemeProvider } from '@/contexts/ThemeContext';
+import { setupNotificationListeners, registerForPushNotifications } from '@/lib/notifications';
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -30,6 +31,17 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError]);
+
+  useEffect(() => {
+    // Setup notification listeners
+    const cleanup = setupNotificationListeners();
+
+    // Register for push notifications with a default user ID
+    // In a real app, you'd get this from authentication
+    registerForPushNotifications('demo-user-123');
+
+    return cleanup;
+  }, []);
 
   if (!fontsLoaded && !fontError) {
     return null;
