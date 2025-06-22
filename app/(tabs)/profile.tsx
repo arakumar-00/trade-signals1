@@ -29,10 +29,12 @@ import {
   Type
 } from 'lucide-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
+import NotificationTestPanel from '../../components/NotificationTestPanel';
 
 export default function ProfileScreen() {
   const { colors, fontSizes, theme, setTheme, fontSize, setFontSize } = useTheme();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [showNotificationTests, setShowNotificationTests] = useState(false);
 
   const userStats = {
     memberSince: 'January 2024',
@@ -252,7 +254,6 @@ export default function ProfileScreen() {
       gap: 8,
     },
     themeButton: {
-      // flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
@@ -282,7 +283,6 @@ export default function ProfileScreen() {
       gap: 8,
     },
     fontSizeButton: {
-      // flex: 1,
       alignItems: 'center',
       paddingVertical: 8,
       paddingHorizontal: 12,
@@ -359,15 +359,29 @@ export default function ProfileScreen() {
       fontFamily: 'Inter-Regular',
       paddingBottom: 20,
     },
+    testToggle: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      backgroundColor: `${colors.secondary}15`,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: `${colors.secondary}30`,
+    },
+    testToggleText: {
+      fontSize: fontSizes.medium,
+      color: colors.secondary,
+      fontFamily: 'Inter-SemiBold',
+    },
   });
 
   return (
-
     <SafeAreaView style={styles.container}>
       {Platform.OS === 'web' ? (
         <ScrollView style={{ padding: 20 }}>
           {/* Profile Header */}
-
           <View style={styles.profileHeader}>
             <View style={styles.avatarContainer}>
               <View style={styles.avatar}>
@@ -406,6 +420,25 @@ export default function ProfileScreen() {
             )}
           </View>
 
+          {/* Notification Test Panel Toggle */}
+          <TouchableOpacity
+            style={styles.testToggle}
+            onPress={() => setShowNotificationTests(!showNotificationTests)}
+          >
+            <Text style={styles.testToggleText}>
+              {showNotificationTests ? 'Hide' : 'Show'} Notification Tests
+            </Text>
+            <Switch
+              value={showNotificationTests}
+              onValueChange={setShowNotificationTests}
+              trackColor={{ false: colors.border, true: colors.secondary }}
+              thumbColor={colors.background}
+            />
+          </TouchableOpacity>
+
+          {/* Notification Test Panel */}
+          {showNotificationTests && <NotificationTestPanel />}
+
           {/* Settings Section */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Preferences</Text>
@@ -434,10 +467,7 @@ export default function ProfileScreen() {
                     styles.themeButton,
                     theme === 'light' && styles.themeButtonActive
                   ]}
-                  onPress={() => {
-                    console.log('Clicked Light'); // Add this
-                    setTheme('light');
-                  }}
+                  onPress={() => setTheme('light')}
                 >
                   <Sun size={14} color={theme === 'light' ? colors.background : colors.textSecondary} />
                   <Text style={[
@@ -539,12 +569,6 @@ export default function ProfileScreen() {
               {menuItems.map(renderMenuItem)}
             </View>
           </View>
-
-          {/* Logout Button */}
-          {/* <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <LogOut size={20} color={colors.error} />
-            <Text style={styles.logoutText}>Logout</Text>
-          </TouchableOpacity> */}
 
           {/* App Version */}
           <Text style={styles.versionText}>Version 1.0.0</Text>
@@ -590,6 +614,25 @@ export default function ProfileScreen() {
             )}
           </View>
 
+          {/* Notification Test Panel Toggle */}
+          <TouchableOpacity
+            style={styles.testToggle}
+            onPress={() => setShowNotificationTests(!showNotificationTests)}
+          >
+            <Text style={styles.testToggleText}>
+              {showNotificationTests ? 'Hide' : 'Show'} Notification Tests
+            </Text>
+            <Switch
+              value={showNotificationTests}
+              onValueChange={setShowNotificationTests}
+              trackColor={{ false: colors.border, true: colors.secondary }}
+              thumbColor={colors.background}
+            />
+          </TouchableOpacity>
+
+          {/* Notification Test Panel */}
+          {showNotificationTests && <NotificationTestPanel />}
+
           {/* Settings Section */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Preferences</Text>
@@ -618,10 +661,7 @@ export default function ProfileScreen() {
                     styles.themeButton,
                     theme === 'light' && styles.themeButtonActive
                   ]}
-                  onPress={() => {
-                    console.log('Clicked Light'); // Add this
-                    setTheme('light');
-                  }}
+                  onPress={() => setTheme('light')}
                 >
                   <Sun size={14} color={theme === 'light' ? colors.background : colors.textSecondary} />
                   <Text style={[
@@ -724,17 +764,10 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          {/* Logout Button */}
-          {/* <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <LogOut size={20} color={colors.error} />
-            <Text style={styles.logoutText}>Logout</Text>
-          </TouchableOpacity> */}
-
           {/* App Version */}
           <Text style={styles.versionText}>Version 1.0.0</Text>
         </ScrollView>
       )}
-
-    </SafeAreaView >
+    </SafeAreaView>
   );
 }

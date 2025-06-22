@@ -36,9 +36,15 @@ export default function RootLayout() {
     // Setup notification listeners
     const cleanup = setupNotificationListeners();
 
-    // Register for push notifications with a default user ID
-    // In a real app, you'd get this from authentication
-    registerForPushNotifications('demo-user-123');
+    // Register for push notifications automatically
+    // In a real app, you might want to do this after user consent
+    registerForPushNotifications().then((deviceId) => {
+      if (deviceId) {
+        console.log('Device registered for notifications:', deviceId);
+      }
+    }).catch((error) => {
+      console.error('Failed to register for notifications:', error);
+    });
 
     return cleanup;
   }, []);
