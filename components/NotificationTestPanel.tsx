@@ -7,7 +7,7 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
-import { Bell, Send, TestTube, Award, TrendingUp, AlertCircle } from 'lucide-react-native';
+import { Bell, Send, TestTube, Award, TrendingUp, CircleAlert as AlertCircle } from 'lucide-react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import {
   sendTestNotification,
