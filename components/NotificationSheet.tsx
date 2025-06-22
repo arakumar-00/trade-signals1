@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { X, Bell, TrendingUp, TrendingDown, Award, AlertCircle, EyeIcon } from 'lucide-react-native';
+import { X, Bell, TrendingUp, TrendingDown, Award, CircleAlert as AlertCircle, Eye as EyeIcon } from 'lucide-react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { fetchNotifications, NotificationData } from '../lib/database';
 
